@@ -1,0 +1,248 @@
+<%- include ('layouts/header.ejs') %>
+
+<h2 class="mb-4">Hii, <%= user && user.name %></h2>
+
+<div class="row">
+    <div class="col-md-4">
+        <ul class="list-group">
+            <% 
+                if(users.length > 0){
+                    for(let i=0; i<users.length; i++){
+                        %>
+                          <li class="list-group-item list-group-item-dark cursor-pointer user-list" data-id="<%= users[i]['_id']%>">
+                            <%= users[i]['name']%>
+
+                            <%
+                                if(users[i]['is_online']==1){
+                                    %>
+                                        <sup class="online-status" id="<%= users[i]['_id'] %>-status">online</sup>
+                                    <%
+                                } else {
+                                    %>
+                                        <sup class="offline-status" id="<%= users[i]['_id'] %>-status">offline</sup>
+                                    <%
+                                }
+                            %>
+                            
+                          </li>
+                        <%
+                    }
+                }
+            %>
+        </ul>
+    </div>
+
+    <div class="col-md-8">
+        <h3 class="start-head">Click to Start the Chat</h3>
+        <div class="chat-section">
+            <div id="chat-container"> </div>
+            <form action="" id="chat-form">
+                <input type="text" name="message" placeholder="Enter Message" id="message" class="border" required>
+                <label class="sendFile" for="fileInput"><img src="images/upload-file.png" alt=""></label>
+                <button type="submit" class="sendButton"><img src="images/send.png" alt=""></button>
+            </form>
+            <input style="display: none;" type="file" accept="image/*" id="fileInput" onchange="selectFile(event)">
+        </div>
+    </div>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.2/socket.io.js"
+    integrity="sha512-VJ6+sp2E5rFQk05caiXXzQd1wBABpjEj1r5kMiLmGAAgwPItw1YpqsCCBtq8Yr1x6C49/mTpRdXtq8O2RcZhlQ==" 
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer">
+</script>
+
+
+<script>
+    var sender_id = '<%= user._id %>';
+    var receiver_id;
+    
+    //Socket.io connection with authentication
+    var socket = io('/user-namespace', {
+    auth: {
+        token: '<%= user._id %>'
+    }
+});
+
+
+console.log('Socket Connection Status:', socket.connected);
+
+     
+    $(document).ready(function() {
+        // Execute code when the DOM is fully loaded
+        
+        
+        $("#joinGroupsLink").click(function() {
+            
+            $("#joinGroupsInput").toggle();
+        });
+
+        
+        $("#joinGroupButton").click(function() {
+           
+            var groupName = $("#groupInput").val();
+            window.location.href = '/groupchat/' + groupName;
+            console.log("Joining group: " + groupName);
+        });
+        // Listen for the 'groupJoined' event from the server
+        socket.on('groupJoined', function (data) {
+       
+       console.log("hey2");
+       window.location.href = '/groupchat/' + data.group_name;
+     });
+
+    });
+       
+
+         
+        $(document).ready(function () {
+        $('.user-list').click(function () {
+            var userId = $(this).attr('data-id');
+            receiver_id = userId;
+
+            $('.start-head').hide();
+            $('.chat-section').show();
+            
+            socket.emit('existsChat', { sender_id: sender_id, receiver_id: receiver_id });
+        });
+
+        socket.on('getOnlineUser', function (data) {
+            $('#' + data.user_id + '-status').text('Online');
+            $('#' + data.user_id + '-status').removeClass('offline-status');
+            $('#' + data.user_id + '-status').addClass('online-status');
+        });
+
+        socket.on('getOfflineUser', function (data) {
+            $('#' + data.user_id + '-status').text('Offline');
+            $('#' + data.user_id + '-status').addClass('offline-status');
+            $('#' + data.user_id + '-status').removeClass('online-status');
+        });
+
+        // Instead of 'newChatMessage', use 'chatMessage'
+    socket.on('newChatMessage', function (data) {
+        //console.log('Received chatMessage event:', data);
+
+        let chat = data.message;
+        let isCurrentUser = data.sender_id === sender_id;
+        let messageClass = isCurrentUser ? 'current-user-chat' : 'distance-user-chat';
+
+        let html = '';
+         console.log("hiii",data.type);
+         
+
+
+        if (data.type === 'text') {
+        html = `<div class="${messageClass}"><h5>${chat}</h5></div>`;
+        } else {
+        html = `
+            <div class='${messageClass}'>
+                <img src="${chat}" alt="" style="width: 300px; object-fit: fill; border-radius: 5%;" id="message-image" />
+            </div>
+        `;
+    }
+
+    console.log('Generated HTML:', html);
+
+    $('#chat-container').append(html);
+});
+
+
+
+        //handling the submission of a chat message through a form
+        $('#chat-form').submit(function (event) {
+            event.preventDefault();
+            var message = $('#message').val();
+
+            socket.emit('chatMessage', {
+                sender_id: sender_id,
+                receiver_id: receiver_id,
+                type:"text",
+                message: message
+            });
+
+            $('#message').val('');  
+        });
+
+        // load old chats, catching loadChats  event from server side to client side
+        socket.on('loadChats', function(data){
+            $('#chat-container').html('');// emptying the chat container on clicking on another user
+            var chats = data.chats;
+            let html = '';
+            for(let x = 0; x < chats.length; x++){
+                let addClass= '';
+                if(chats[x]['sender_id']== sender_id){
+                    addClass = 'current-user-chat';
+                }
+                else{
+                    addClass = 'distance-user-chat';
+                }
+                if(chats[x].type === 'text')
+                {
+                    html+=`
+                    <div class='${addClass}'>
+                        <h5>${chats[x]['message']}</h5>
+                    </div>
+                    `;
+                } else {
+                    html+=`
+                    <div class='${addClass}'>
+                        <img src="${chats[x]['message']}" alt="" 
+                        style="width: 300px; object-fit: fill; border-radius: 5%;"
+                        id="message-image" />
+                    </div>
+                    `;
+                }
+            }
+            $('#chat-container').append(html);
+        });
+    });
+
+</script>
+<script>
+    function selectFile(e) { // for Extracting the file input element and the selected file
+         const fileInput = e.target;
+         const file = fileInput.files[0];
+ 
+         if (file) {
+             const reader = new FileReader();
+             reader.onload = function (e) {
+                 const imageData = e.target.result;
+ 
+                
+                 const chatMessageDiv = `<div class='current-user-chat'>
+                     <img src="${imageData}" alt=""
+                         style="width: 300px; object-fit: fill; border-radius: 5%;"
+                         id="message-image" />
+                 </div>`;
+ 
+                 
+                 
+ 
+                 // Emit the chat message to the server
+                 socket.emit('chatMessage', {
+                     sender_id: sender_id,
+                     receiver_id: receiver_id,
+                     type: "image",
+                     message: imageData
+                 });
+ 
+                 // Reset the file input
+                 fileInput.value = null;
+             };
+ 
+             reader.readAsDataURL(file);
+         }
+     }
+ 
+ </script>
+ <script>
+   socket.on('message', (msg) => {
+    console.log('From server Msg Received', msg);
+});
+ </script>
+
+
+<%- include ('layouts/footer.ejs') %>
+
+

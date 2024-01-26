@@ -1,0 +1,5 @@
+#message-image {
+    width: 250px; 
+    object-fit: fill; 
+	border-radius: 5%;
+}

@@ -1,0 +1,155 @@
+<%- include ('layouts/header.ejs') %>
+
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+    }
+
+    h2 {
+        color: #333;
+    }
+
+    .chat-container {
+        max-height: 300px;
+        overflow-y: scroll;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+
+    .chat-input {
+        display: flex;
+    }
+
+    #group-message-input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-right: 10px;
+    }
+
+    button {
+        padding: 10px;
+        background-color: #4CAF50;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #45a049;
+    }
+
+    .group-chat-message {
+        margin-bottom: 10px;
+    }
+
+    /* Add more custom styles based on your preferences */
+</style>
+
+<h2 class="mb-4">Group Chat: <%= groupName %></h2>
+
+<div id="chat-container" class="chat-container">
+    
+</div>
+
+<div class="chat-input">
+    <form id="group-chat-form">
+        <input type="text" id="group-message-input" placeholder="Type your message..." autocomplete="off">
+        <input type="file" accept="image/*" id="group-fileInput" onchange="selectGroupFile(event)">
+        <button type="submit">Send</button>
+    </form>
+</div>
+<script>
+    // ... (your existing code)
+
+    function selectGroupFile(e) {
+        const fileInput = e.target;
+        const file = fileInput.files[0];
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const imageData = e.target.result;
+
+                // Emit the group chat message to the server
+                socket.emit('sendGroupChatMessage', {
+                    groupName: '<%= groupName %>',
+                    type: "image",
+                    message: imageData
+                });
+
+                // Reset the file input
+                fileInput.value = null;
+            };
+
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // ... (your existing code)
+</script>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.2/socket.io.js"
+    integrity="sha512-VJ6+sp2E5rFQk05caiXXzQd1wBABpjEj1r5kMiLmGAAgwPItw1YpqsCCBtq8Yr1x6C49/mTpRdXtq8O2RcZhlQ==" 
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer">
+</script>
+
+<script>
+    //establishes a WebSocket connection to the server
+    var socket = io('/group-namespace', {
+        auth: {
+            token: '<%= user._id %>'
+        }
+    });
+    console.log('Socket Connection Status:', socket.connected);
+
+    $(document).ready(function () {
+        // Emit an event to join the group chat
+        socket.emit('joinGroupChat', { groupName: '<%= groupName %>' });
+
+        // Listen for incoming group chat messages
+        socket.on('groupChatMessage', function (data) {
+            displayGroupChatMessage(data.sender, data.message);
+        });
+
+        // Handle the form submission to send group chat messages
+        $('#group-chat-form').submit(function (event) {
+            event.preventDefault();
+            var messageInput = $('#group-message-input');
+            var message = messageInput.val().trim();
+
+            if (message !== '') {
+                // Emit a group chat message event
+                socket.emit('sendGroupChatMessage', {
+                    groupName: '<%= groupName %>',
+                    message: message
+                });
+
+                // Display the sent message on the sender's screen
+                displayGroupChatMessage('You', message);
+
+                // Clear the input field
+                messageInput.val('');
+            }
+        });
+
+        // Function to display group chat messages
+        function displayGroupChatMessage(sender, message) {
+            var chatMessageDiv = $('<div class="group-chat-message"></div>');
+            chatMessageDiv.html('<strong>' + sender + ':</strong> ' + message);
+
+            // Append the chat message div to the chat container
+            $('#chat-container').append(chatMessageDiv);
+
+            // Scroll to the bottom of the chat container
+            $('#chat-container').scrollTop($('#chat-container')[0].scrollHeight);
+        }2
+    });
+</script>
+
+<%- include ('layouts/footer.ejs') %>

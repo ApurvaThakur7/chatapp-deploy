@@ -1,0 +1,45 @@
+<!-- register.ejs -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Registration</title>
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body class="login-body">
+  <div class="another-wrapper">
+      <div class="login-wrapper">
+        <h1>User Registration</h1>
+        <form action="/register" method="post" enctype="multipart/form-data">
+          <label for="name">Enter your name</label>
+          <input type="text" id="name" name="name" placeholder="Enter Name" required>
+          <label for="email">Enter your email</label>
+          <input type="email" id="email" name="email" placeholder="Enter email" required>          
+          <label for="password">Enter your password</label>
+          <input type="password" id="password" name="password" placeholder="Enter password" required> 
+          <label for="image">Enter your image</label>         
+          <input type="file" id="file" name="image" required>    
+          <button type="submit">Register</button>
+        </form>
+      </div>
+      <p>Already have an account? <a href="/login">Login</a></p>
+      <% if ( typeof message !=='undefined') { 
+        %>
+        <p style="color: green;"><%= message %></p>
+        <% 
+      } 
+      %>
+</div>
+  <div class="logo-wrapper">
+    <img src="images/logo2.png" alt="">
+  </div>
+
+  
+
+  
+
+  
+</body>
+</html>
